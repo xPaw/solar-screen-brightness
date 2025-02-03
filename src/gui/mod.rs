@@ -6,6 +6,7 @@ mod monitor_overrides;
 mod status;
 
 use crate::common::APP_NAME;
+use crate::controller::Message;
 use crate::gui::app::SsbEguiApp;
 use crate::tray::read_icon;
 use egui_wgpu::wgpu::PowerPreference;
@@ -13,6 +14,7 @@ use egui_winit::winit;
 use egui_winit::winit::event::{Event, WindowEvent};
 use egui_winit::winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use egui_winit::winit::window::Icon;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -33,6 +35,9 @@ pub enum NextPaint {
 pub enum UserEvent {
     // When the tray button is clicked - we should open or bring forward the window
     OpenWindow(&'static str),
+    // When the tray button for a pause is clicked - it should pause changing brightness for the given duration.
+    // When the duration is negative, it will be paused until sunrise.
+    Pause(&'static str, i64),
     // When the tray exit button is clicked - the application should exit
     Exit(&'static str),
     // Hide the window if it is open
@@ -66,6 +71,7 @@ impl Drop for WgpuWinitRunning {
 pub struct WgpuWinitApp<F> {
     repaint_proxy: EventLoopProxy<UserEvent>,
     running: Option<WgpuWinitRunning>,
+    controller: Sender<Message>,
     icon: Icon,
     app_factory: F,
     start_minimised: bool,
@@ -75,6 +81,7 @@ impl<F: Fn() -> SsbEguiApp> WgpuWinitApp<F> {
     pub fn new(
         event_loop: EventLoopProxy<UserEvent>,
         start_minimised: bool,
+        controller: Sender<Message>,
         app_factory: F,
     ) -> Self {
         if start_minimised {
@@ -85,6 +92,7 @@ impl<F: Fn() -> SsbEguiApp> WgpuWinitApp<F> {
         Self {
             repaint_proxy: event_loop,
             running: None,
+            controller,
             icon,
             app_factory,
             start_minimised,
@@ -254,6 +262,14 @@ impl<F: Fn() -> SsbEguiApp> WgpuWinitApp<F> {
                 } else {
                     self.launch_window(event_loop)
                 }
+            }
+
+            Event::UserEvent(UserEvent::Pause(src, time)) => {
+                log::info!("Received Pause action from '{src}' for '{time}' seconds");
+                self.controller
+                    .send(Message::Pause(src, time.clone()))
+                    .unwrap();
+                NextPaint::Wait
             }
 
             Event::UserEvent(UserEvent::RequestRepaint { when, frame_nr }) => {

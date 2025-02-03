@@ -80,14 +80,19 @@ fn main() {
     let _tray = tray::create(&event_loop);
 
     let app_proxy = event_loop.create_proxy();
-    let mut framework = WgpuWinitApp::new(event_loop.create_proxy(), args.minimised, move || {
-        SsbEguiApp::new(
-            app_proxy.clone(),
-            controller.last_result.clone(),
-            config.clone(),
-            controller.sender.clone(),
-        )
-    });
+    let mut framework = WgpuWinitApp::new(
+        event_loop.create_proxy(),
+        args.minimised,
+        controller.sender.clone(),
+        move || {
+            SsbEguiApp::new(
+                app_proxy.clone(),
+                controller.last_result.clone(),
+                config.clone(),
+                controller.sender.clone(),
+            )
+        },
+    );
 
     let mut next_repaint_time = Some(Instant::now());
 

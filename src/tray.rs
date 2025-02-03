@@ -2,11 +2,17 @@ use crate::common::APP_NAME;
 use crate::gui::UserEvent;
 use egui_winit::winit::event_loop::{EventLoop, EventLoopProxy};
 use std::sync::{Arc, Mutex};
-use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItemBuilder};
+use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItemBuilder, SubmenuBuilder};
 use tray_icon::{ClickType, Icon, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 const MENU_ID_OPEN: &str = "OPEN";
 const MENU_ID_EXIT: &str = "EXIT";
+//const MENU_ID_UNPAUSE: &str = "UNPAUSE"; // TODO: Add unpause when paused
+const MENU_ID_PAUSE_15M: &str = "PAUSE_15M";
+const MENU_ID_PAUSE_30M: &str = "PAUSE_30M";
+const MENU_ID_PAUSE_1H: &str = "PAUSE_1H";
+const MENU_ID_PAUSE_2H: &str = "PAUSE_2H";
+const MENU_ID_PAUSE_SUNRISE: &str = "PAUSE_SUNRISE";
 
 pub fn read_icon() -> (Vec<u8>, png::OutputInfo) {
     let mut decoder = png::Decoder::new(include_bytes!("../assets/icon-256.png").as_slice());
@@ -44,6 +50,38 @@ fn create_internal(event_loop: EventLoopProxy<UserEvent>) -> TrayIcon {
             .id(MenuId::new(MENU_ID_OPEN))
             .enabled(true)
             .build(),
+        &SubmenuBuilder::new()
+            .text("Pause for…")
+            .enabled(true)
+            .items(&[
+                &MenuItemBuilder::new()
+                    .text("Until next sunrise")
+                    .id(MenuId::new(MENU_ID_PAUSE_SUNRISE))
+                    .enabled(true)
+                    .build(),
+                &MenuItemBuilder::new()
+                    .text("15 minutes")
+                    .id(MenuId::new(MENU_ID_PAUSE_15M))
+                    .enabled(true)
+                    .build(),
+                &MenuItemBuilder::new()
+                    .text("30 minutes")
+                    .id(MenuId::new(MENU_ID_PAUSE_30M))
+                    .enabled(true)
+                    .build(),
+                &MenuItemBuilder::new()
+                    .text("1 hour")
+                    .id(MenuId::new(MENU_ID_PAUSE_1H))
+                    .enabled(true)
+                    .build(),
+                &MenuItemBuilder::new()
+                    .text("2 hours")
+                    .id(MenuId::new(MENU_ID_PAUSE_2H))
+                    .enabled(true)
+                    .build(),
+            ])
+            .build()
+            .unwrap(),
         &MenuItemBuilder::new()
             .text("Exit")
             .id(MenuId::new(MENU_ID_EXIT))
@@ -76,6 +114,11 @@ fn create_internal(event_loop: EventLoopProxy<UserEvent>) -> TrayIcon {
         let action = match event.id.0.as_str() {
             MENU_ID_OPEN => UserEvent::OpenWindow("Tray Button"),
             MENU_ID_EXIT => UserEvent::Exit("Tray Button"),
+            MENU_ID_PAUSE_15M => UserEvent::Pause("Tray Button", 900),
+            MENU_ID_PAUSE_30M => UserEvent::Pause("Tray Button", 1800),
+            MENU_ID_PAUSE_1H => UserEvent::Pause("Tray Button", 3600),
+            MENU_ID_PAUSE_2H => UserEvent::Pause("Tray Button", 7200),
+            MENU_ID_PAUSE_SUNRISE => UserEvent::Pause("Tray Button", -1),
             _ => return,
         };
         menu_loop.lock().unwrap().send_event(action).unwrap();

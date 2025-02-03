@@ -44,6 +44,7 @@ fn run(args: Args) -> anyhow::Result<()> {
             config.transition_mins,
             config.location.unwrap(),
             config.overrides,
+            false,
         );
         let pretty = serde_json::to_string_pretty(&result).unwrap();
         println!("{}", pretty);

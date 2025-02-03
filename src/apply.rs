@@ -96,6 +96,7 @@ pub fn apply_brightness(
     transition_mins: u32,
     location: Location,
     overrides: Vec<MonitorOverride>,
+    force_day_brightness: bool,
 ) -> ApplyResults {
     let overrides = overrides
         .iter()
@@ -132,9 +133,13 @@ pub fn apply_brightness(
 
             if let Some(BrightnessValues {
                 brightness_day,
-                brightness_night,
+                mut brightness_night,
             }) = monitor_values
             {
+                if force_day_brightness {
+                    brightness_night = brightness_day;
+                }
+
                 let brightness = calculate_brightness(
                     brightness_day,
                     brightness_night,

@@ -94,7 +94,11 @@ impl Page for BrightnessSettingsPage {
                 self.copy_to_config(&mut config);
                 app_state
                     .controller
-                    .send(Message::Refresh("Brightness change"))
+                    .send(Message::Unpause("UI Apply"))
+                    .unwrap();
+                app_state
+                    .controller
+                    .send(Message::Refresh("UI Apply"))
                     .unwrap();
             }
             if ui.button("Save").clicked() {
@@ -102,7 +106,7 @@ impl Page for BrightnessSettingsPage {
                 self.copy_to_config(&mut config);
                 app_state
                     .controller
-                    .send(Message::Refresh("Brightness change"))
+                    .send(Message::Refresh("UI Save"))
                     .unwrap();
                 save_config(&mut config, &app_state.transitions);
             };
