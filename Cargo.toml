@@ -53,6 +53,7 @@ console = "0.15.7"
 version = "0.52.0"
 features = [
     "Win32_Foundation",
+    "Win32_UI_Accessibility",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_LibraryLoader",
     "Win32_Graphics_Gdi",

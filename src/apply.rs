@@ -3,7 +3,7 @@ use crate::config::{BrightnessValues, Location, MonitorOverride, MonitorProperty
 use brightness::blocking::{Brightness, BrightnessDevice};
 use itertools::Itertools;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sunrise_sunset_calculator::SunriseSunsetParameters;
 use wildmatch::WildMatch;
@@ -97,6 +97,7 @@ pub fn apply_brightness(
     location: Location,
     overrides: Vec<MonitorOverride>,
     force_day_brightness: bool,
+    fullscreen_overrides: Option<HashSet<String>>,
 ) -> ApplyResults {
     let overrides = overrides
         .iter()
@@ -131,12 +132,23 @@ pub fn apply_brightness(
                 Some(o) => o.brightness,
             };
 
+            // TODO: Maybe get full display names with EnumDisplayDevicesW in windows.rs?
+            // TODO: Add a setting to control this
+            let force_day_brightness_for_this_monitor = force_day_brightness
+                || if let Some(fullscreen_overrides) = &fullscreen_overrides {
+                    fullscreen_overrides
+                        .iter()
+                        .any(|pattern| properties.device_name.starts_with(pattern))
+                } else {
+                    false
+                };
+
             if let Some(BrightnessValues {
                 brightness_day,
                 mut brightness_night,
             }) = monitor_values
             {
-                if force_day_brightness {
+                if force_day_brightness_for_this_monitor {
                     brightness_night = brightness_day;
                 }
 

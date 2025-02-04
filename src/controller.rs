@@ -1,6 +1,7 @@
 use crate::apply::{apply_brightness, ApplyResults};
 use crate::config::SsbConfig;
 use human_repr::HumanDuration;
+use std::collections::HashSet;
 use std::mem::take;
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{mpsc, Arc, RwLock};
@@ -16,6 +17,8 @@ pub enum Message {
     Enable(&'static str),
     Unpause(&'static str),
     Pause(&'static str, i64),
+    FullscreenAdd(String),
+    FullscreenRemove(String),
 }
 
 pub struct BrightnessController {
@@ -61,6 +64,7 @@ fn run<F: Fn()>(
     let mut enabled = true;
     // When paused, this will be set to the SystemTime until which updates are paused.
     let mut paused_until: Option<SystemTime> = None;
+    let mut fullscreen_overrides: HashSet<String> = HashSet::new();
 
     loop {
         // If we are paused, check whether the pause period has expired.
@@ -75,7 +79,7 @@ fn run<F: Fn()>(
             // Apply brightness using latest config
             let config = config.read().unwrap().clone();
             let is_paused = paused_until.is_some();
-            let result = apply(config, is_paused);
+            let result = apply(config, is_paused, fullscreen_overrides.clone());
             let timeout = calculate_timeout(&result);
 
             // Update last result
@@ -135,6 +139,14 @@ fn run<F: Fn()>(
                 };
                 paused_until = Some(pause_time);
             }
+            Ok(Message::FullscreenAdd(id)) => {
+                log::info!("Adding monitor {id} to fullscreen override");
+                fullscreen_overrides.insert(id);
+            }
+            Ok(Message::FullscreenRemove(id)) => {
+                log::info!("Removing monitor {id} from fullscreen override");
+                fullscreen_overrides.remove(&id);
+            }
             Err(RecvTimeoutError::Timeout) => {
                 log::debug!("Refreshing BrightnessController due to timeout")
             }
@@ -159,7 +171,11 @@ fn calculate_timeout(results: &Option<ApplyResults>) -> Option<SystemTime> {
 }
 
 // Calculate and apply the brightness
-fn apply(config: SsbConfig, force_day_brightness: bool) -> Option<ApplyResults> {
+fn apply(
+    config: SsbConfig,
+    force_day_brightness: bool,
+    fullscreen_overrides: HashSet<String>,
+) -> Option<ApplyResults> {
     if let Some(location) = config.location {
         Some(apply_brightness(
             config.brightness_day,
@@ -168,6 +184,7 @@ fn apply(config: SsbConfig, force_day_brightness: bool) -> Option<ApplyResults> 
             location,
             config.overrides,
             force_day_brightness,
+            Some(fullscreen_overrides),
         ))
     } else {
         log::warn!("Skipping apply because no location is configured");
